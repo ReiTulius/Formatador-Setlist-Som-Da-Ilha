@@ -10,7 +10,7 @@ st.title("📻 Formatador de Roteiro - Som da Ilha")
 st.markdown("Instruções: Cole o texto do Sysrad e clique em formatar. A lista de Instagrams é atualizada automaticamente via Google Drive.")
 
 # 🔗 COLE O LINK DA SUA PLANILHA DO GOOGLE AQUI ENTRE AS ASPAS:
-URL_GOOGLE_SHEETS = "SUA_URL_DO_GOOGLE_SHEETS_AQUI"
+URL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/1zkPm3F9W8QbOBhKvdV7jFCYqH-U8Qbru5w5TDyAHQLw/edit?usp=sharing"
 
 # Função para converter o link normal do Google Sheets para o formato de exportação de dados (CSV)
 def converter_link_google(url):
