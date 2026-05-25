@@ -7,27 +7,32 @@ from datetime import datetime
 st.set_page_config(page_title="Formatador Som da Ilha", page_icon="📻", layout="centered")
 
 st.title("📻 Formatador de Roteiro - Som da Ilha")
-st.markdown("Instruções: Carregue a planilha de contatos, cole o texto do Sysrad e clique em formatar.")
+st.markdown("Instruções: Cole o texto do Sysrad e clique em formatar. A lista de Instagrams é atualizada automaticamente via Google Drive.")
 
-# 1. Upload da Planilha do Excel ou CSV
-uploaded_file = st.file_uploader("1. Carregue sua planilha de Instagrams (.xlsx ou .csv)", type=["xlsx", "csv"])
+# 🔗 COLE O LINK DA SUA PLANILHA DO GOOGLE AQUI ENTRE AS ASPAS:
+URL_GOOGLE_SHEETS = "SUA_URL_DO_GOOGLE_SHEETS_AQUI"
 
-if uploaded_file is not None:
+# Função para converter o link normal do Google Sheets para o formato de exportação de dados (CSV)
+def converter_link_google(url):
+    if "docs.google.com/spreadsheets" in url:
+        # Extrai o ID da planilha e força o formato de exportação
+        id_planilha = url.split("/d/")[1].split("/")[0]
+        return f"https://docs.google.com/spreadsheets/d/{id_planilha}/export?format=csv"
+    return url
+
+# Carregamento dos dados em tempo real dos bastidores
+@st.cache_data(ttl=300)  # Guarda na memória por 5 minutos para o site ficar super rápido
+def carregar_banco_instagram(url):
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+        url_direta = converter_link_google(url)
+        df = pd.read_csv(url_direta)
         
-        st.success("Planilha carregada com sucesso!")
-        
-        # Padronizando o nome das colunas para evitar erros de digitação
+        # Padronizando o nome das colunas
         df.columns = [str(c).strip().lower() for c in df.columns]
-        
         col_artista = df.columns[0]
         col_insta = df.columns[1]
         
-        banco_instagram = {}
+        banco = {}
         for _, linha_planilha in df.iterrows():
             nome_artista = str(linha_planilha[col_artista]).strip().lower()
             insta = str(linha_planilha[col_insta]).strip() if pd.notna(linha_planilha[col_insta]) else ""
@@ -35,12 +40,27 @@ if uploaded_file is not None:
             if insta.lower() in ["nan", "null", "none", "0"]:
                 insta = ""
                 
-            banco_instagram[nome_artista] = insta
+            banco[nome_artista] = insta
+        return banco, None
+    except Exception as e:
+        return {}, f"Erro ao conectar com o Google Drive: {e}"
 
-        # 2. Área para colar o texto do Sysrad
-        texto_bruto = st.text_area("2. Cole aqui o roteiro bruto copiado do Sysrad:", height=250)
+# Tenta carregar o banco de dados automaticamente
+if URL_GOOGLE_SHEETS == "SUA_URL_DO_GOOGLE_SHEETS_AQUI" or not URL_GOOGLE_SHEETS:
+    st.error("⚠️ Configuração incompleta: O desenvolvedor precisa colocar o link do Google Sheets no código do app.py.")
+else:
+    banco_instagram, erro = carregar_banco_instagram(URL_GOOGLE_SHEETS)
+    
+    if erro:
+        st.error(erro)
+    else:
+        # Se deu tudo certo, a interface fica limpa só com a área de texto!
+        st.success("✅ Banco de dados dos artistas conectado e atualizado em tempo real!")
 
-        # 3. Botão de Ação
+        # 1. Área para colar o texto do Sysrad
+        texto_bruto = st.text_area("1. Cole aqui o roteiro bruto copiado do Sysrad:", height=250)
+
+        # 2. Botão de Ação
         if st.button("Formatar Roteiro ✨", type="primary"):
             if texto_bruto:
                 linhas = texto_bruto.split('\n')
@@ -67,10 +87,9 @@ if uploaded_file is not None:
                         
                         musica_limpa = musica_limpa.rstrip('-').strip()
                         
-                        # Busca o instagram pelo artista principal
+                        # Busca o instagram
                         instagram = banco_instagram.get(artista_busca, "")
                         
-                        # Monta a linha final
                         linha_final = f"{artista_original} - {musica_limpa} {instagram}".strip()
                         resultado.append(linha_final)
                 
@@ -81,8 +100,3 @@ if uploaded_file is not None:
                 st.balloons()
             else:
                 st.warning("Por favor, cole o roteiro do Sysrad antes de formatar.")
-                
-    except Exception as e:
-        st.error(f"Erro ao processar o app. Erro técnico: {e}")
-else:
-    st.info("Aguardando o upload da planilha para liberar as próximas etapas.")
